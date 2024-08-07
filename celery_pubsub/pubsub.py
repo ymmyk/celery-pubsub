@@ -43,12 +43,20 @@ class PubSubManager:
         super(PubSubManager, self).__init__()
         self.subscribed: set[tuple[str, re.Pattern[str], Task[P, R]]] = set()
         self.jobs: dict[str, group] = {}
+        self.enabled = True
+
+    def set_enabled(self, enabled: bool) -> None:
+        self.enabled = enabled
 
     def publish(self, topic: str, *args: PA, **kwargs: PK) -> AsyncResult[R]:
+        if not self.enabled:
+            return celery.group([]).delay()
         result = self.get_jobs(topic).delay(*args, **kwargs)
         return result
 
     def publish_now(self, topic: str, *args: PA, **kwargs: PK) -> EagerResult[R]:
+        if not self.enabled:
+            return celery.group([]).apply()
         # Ignoring type because of this: https://github.com/sbdchd/celery-types/issues/111
         result = self.get_jobs(topic).apply(args=args, kwargs=kwargs)  # type: ignore
         return result
@@ -115,3 +123,6 @@ def subscribe(topic: str, task: Task[P, R]) -> None:
 
 def unsubscribe(topic: str, task: Task[P, R]) -> None:
     return _pubsub_manager.unsubscribe(topic, task)
+
+def set_enabled(enabled: bool) -> None:
+    _pubsub_manager.set_enabled(enabled)

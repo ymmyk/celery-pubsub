@@ -16,7 +16,7 @@ else:
 from celery import Task
 from celery.worker import WorkController
 
-from celery_pubsub import publish, unsubscribe, publish_now
+from celery_pubsub import publish, unsubscribe, publish_now, set_enabled
 
 P = ParamSpec("P")
 
@@ -104,6 +104,28 @@ def test_11(celery_worker: WorkController) -> None:
     from celery_pubsub import publish
 
     res = publish("foo.bar", 4, 8, a15=16, a23=42).get()
+    assert sorted(res) == sorted(["e", "h", "k"])
+
+def test_publish_enabled(celery_worker: WorkController) -> None:
+    from celery_pubsub import publish, set_enabled
+
+    set_enabled(False)
+    res = publish("foo.bar", 4, 8, a15=16, a23=42).get()
+    assert res == []
+
+    set_enabled(True)
+    res = publish("foo.bar", 4, 8, a15=16, a23=42).get()
+    assert sorted(res) == sorted(["e", "h", "k"])
+
+def test_publish_now_enabled(celery_worker: WorkController) -> None:
+    from celery_pubsub import publish, set_enabled
+
+    set_enabled(False)
+    res = publish_now("foo.bar", 4, 8, a15=16, a23=42).get()
+    assert res == []
+
+    set_enabled(True)
+    res = publish_now("foo.bar", 4, 8, a15=16, a23=42).get()
     assert sorted(res) == sorted(["e", "h", "k"])
 
 
